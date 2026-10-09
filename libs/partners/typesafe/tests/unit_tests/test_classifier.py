@@ -185,7 +185,9 @@ def test_invoke_sends_request_and_parses_response() -> None:
     result = classifier.invoke(request)
 
     assert result.request_id == REQUEST_ID
+    assert result.id is None
     assert result.usage.input_tokens == 42
+    assert result.usage.cost is None
     assert result.choices["department"] == ChoiceAnswer(
         type="choice",
         choice="technical",
@@ -200,6 +202,34 @@ def test_invoke_sends_request_and_parses_response() -> None:
         probabilities={0: 0.1, 1: 0.55, 2: 0.35},
         confidence=0.7,
     )
+    client.close()
+
+
+def test_gateway_response_id_and_cost_are_parsed() -> None:
+    """A gateway's body-level response ID and cost survive parsing.
+
+    OpenRouter returns its generation ID and cost in the response body rather than in
+    the `x-typesafe-request-id` header, so `request_id` stays unset.
+    """
+
+    def handler(_: httpx2.Request) -> httpx2.Response:
+        payload = _response_payload()
+        payload["id"] = "gen-123"
+        payload["usage"]["cost"] = 0.00012
+        return httpx2.Response(200, json=payload)
+
+    client = httpx2.Client(transport=httpx2.MockTransport(handler))
+    classifier = TypeSafeClassifier(
+        api_key=API_KEY,
+        client=client,
+    )
+
+    result = classifier.invoke(_request())
+
+    assert result.id == "gen-123"
+    assert result.request_id is None
+    assert result.usage.cost == 0.00012
+    assert result.usage.input_tokens == 42
     client.close()
 
 

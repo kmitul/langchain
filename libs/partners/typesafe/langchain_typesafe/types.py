@@ -283,6 +283,13 @@ class Usage(BaseModel):
     output_tokens: int | None = None
     """Number of output tokens produced, or `None` when not reported."""
 
+    cost: float | None = None
+    """Request cost reported in the response body, or `None` when not reported.
+
+    The TypeSafe API does not report cost. Gateways that serve TypeSafe models, such as
+    OpenRouter, report it in their own billing unit.
+    """
+
 
 class ClassifierResponse(BaseModel):
     """Typed answers and metadata returned from one TypeSafe request.
@@ -300,6 +307,14 @@ class ClassifierResponse(BaseModel):
 
     usage: Usage = Field(default_factory=Usage)
     """Input and output token counts reported for the request."""
+
+    id: str | None = None
+    """Response ID reported in the response body, or `None` when not reported.
+
+    The TypeSafe API does not report one; gateways that serve TypeSafe models may, such
+    as an OpenRouter generation ID (`gen-...`). Unlike `request_id`, it is not read
+    from the `x-typesafe-request-id` header.
+    """
 
     request_id: str | None = None
     """TypeSafe request ID, useful when diagnosing a request with provider support."""
